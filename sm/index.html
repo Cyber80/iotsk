@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SmartFarm Dashboard</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Libs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/timezone.js"></script>
+  <script>dayjs.extend(dayjs_plugin_utc); dayjs.extend(dayjs_plugin_timezone);</script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <!-- Leaflet (Map) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+  <div id="app" class="container">
+    <header class="header">
+      <h1><img src="icons/school-logo.png" alt="โลโก้โรงเรียน" width="60" style="margin-bottom:8px;">
+ SmartFarm Control Panel🌿</h1>
+      <div class="header-right">
+        <span class="tag" id="connTag">offline demo</span>
+        <span class="muted">อัปเดต: <b id="lastUpdate">-</b></span>
+        <button class="btn ghost" id="btnTheme">โหมดสี</button>
+        <button class="btn ghost" id="btnInstall" style="display:none">ติดตั้งแอป</button>
+      </div>
+    </header>
+
+    <!-- KPIs -->
+    <section class="grid kpis">
+      <div class="card">
+        <h3>Soil Moisture</h3>
+        <div class="kpi"><div class="val" id="kpi-soil">-</div><small>%</small></div>
+        <div class="muted">เฉลี่ย 24 ชม. <b id="avg-soil">-</b>%</div>
+      </div>
+      <div class="card">
+        <h3>Light</h3>
+        <div class="kpi"><div class="val" id="kpi-light">-</div><small>lux</small></div>
+        <div class="muted">เฉลี่ย 24 ชม. <b id="avg-light">-</b> lux</div>
+      </div>
+      <div class="card">
+        <h3>อุปกรณ์</h3>
+        <div class="row">
+          ไฟ: <span id="lampStatus" class="pill off">OFF</span>
+          ปั๊ม: <span id="pumpStatus" class="pill off">OFF</span>
+        </div>
+        <div class="sep"></div>
+        <div class="row">
+          <button class="btn brand2" id="btnLamp">สลับไฟ 💡</button>
+          <button class="btn brand" id="btnPump">สลับปั๊ม 💧</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Charts -->
+    <section class="grid two">
+      <div class="card">
+        <div class="row between">
+          <h3>Soil & Light</h3>
+          <div class="row">
+            <select id="rangeSelect">
+              <option value="24h">24 ชั่วโมง</option>
+              <option value="7d">7 วัน</option>
+              <option value="30d">30 วัน</option>
+              <option value="1y">1 ปี</option>
+              <option value="custom">กำหนดเอง</option>
+            </select>
+            <input type="date" id="fromDate" class="hide">
+            <input type="date" id="toDate" class="hide">
+            <button class="btn" id="btnApplyRange">ดู</button>
+          </div>
+        </div>
+        <div class="chartwrap"><canvas id="chartMain"></canvas></div>
+      </div>
+
+      <div class="card">
+        <h3>Temperature & Humidity</h3>
+        <div class="chartwrap"><canvas id="chartTH"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Auto/Manual & Schedule -->
+    <section class="grid two">
+      <div class="card">
+        <h3>โหมดควบคุม</h3>
+        <div class="row">
+          <label class="switch"><input type="checkbox" id="modeAuto"> <span>Auto</span></label>
+          <span class="muted">เมื่อ Auto: ระบบจะ “แนะนำ/สั่ง” ตามเกณฑ์ หากอนุญาต</span>
+        </div>
+        <div class="sep"></div>
+        <div class="grid three">
+          <div class="field">
+            <label class="label">Threshold Soil (%)</label>
+            <input type="number" id="thSoil" min="0" max="100" step="1" value="35">
+            <span class="muted">ต่ำกว่า → เปิดปั๊ม</span>
+          </div>
+          <div class="field">
+            <label class="label">Max Pump (นาที)</label>
+            <input type="number" id="maxPumpMin" min="1" max="60" step="1" value="10">
+            <span class="muted">กันเปิดปั๊มนานเกิน</span>
+          </div>
+          <div class="field">
+            <label class="label">บังคับสั่งงานอัตโนมัติ</label>
+            <select id="autoEnforce">
+              <option value="off">แค่แนะนำ</option>
+              <option value="on">อนุญาตให้สั่งงาน</option>
+            </select>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div id="autoAdvice" class="muted">คำแนะนำอัตโนมัติ: -</div>
+      </div>
+
+      <div class="card">
+        <h3>Schedule รายวัน</h3>
+        <div class="grid three">
+          <div class="field"><label class="label">เปิดปั๊ม</label><input type="time" id="schOn" value="06:30"></div>
+          <div class="field"><label class="label">ปิดปั๊ม</label><input type="time" id="schOff" value="06:45"></div>
+          <div class="field"><label class="label">ใช้งาน</label>
+            <select id="schEnable"><option value="on">เปิด</option><option value="off">ปิด</option></select>
+          </div>
+        </div>
+        <div class="muted">เช็คทุก 30 วินาที และสั่งงานเมื่อถึงเวลา (ถ้าอนุญาต)</div>
+      </div>
+    </section>
+
+    <!-- Weather + Map -->
+    <section class="grid two">
+      <div class="card">
+        <h3>สภาพอากาศ & พยากรณ์</h3>
+        <div class="row wrap">
+          <div class="muted">พิกัด: <span id="latlon">-</span></div>
+          <button class="btn ghost" id="btnUseGeoloc">ใช้ตำแหน่งฉัน</button>
+          <button class="btn" id="btnRefreshWeather">รีเฟรชพยากรณ์</button>
+        </div>
+        <div class="weather">
+          <div>อุณหภูมิปัจจุบัน: <b id="wx-temp">-</b>°C | ความชื้น: <b id="wx-humi">-</b>%</div>
+          <div>ฝน 24 ชม.ข้างหน้า: <b id="wx-rain">-</b> mm</div>
+          <div class="muted">ระบบจะ “ชะลอการรดน้ำอัตโนมัติ” หากคาดว่าฝนจะตกมาก</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>แผนที่ฟาร์ม</h3>
+        <div id="map"></div>
+        <div class="muted">ลากหมุดเพื่อเปลี่ยนพิกัดแปลงปลูก</div>
+      </div>
+    </section>
+
+    <!-- Import/Export -->
+    <section class="card">
+      <h3>นำเข้า/ส่งออก</h3>
+      <div class="row wrap">
+        <button class="btn" id="btnExportCSV">Export CSV</button>
+        <button class="btn" id="btnExportPNG">Export PNG</button>
+        <button class="btn" id="btnExportJPG">Export JPG</button>
+        <button class="btn" id="btnExportPDF">Export PDF</button>
+        <span class="sep v"></span>
+        <input type="file" id="fileImport" accept=".json,.csv" />
+        <button class="btn ghost" id="btnImport">Import</button>
+      </div>
+    </section>
+
+    <!-- Table -->
+    <section class="card">
+      <h3>ข้อมูลล่าสุด</h3>
+      <div class="tablewrap">
+        <table id="dataTable">
+          <thead>
+            <tr>
+              <th>เวลา</th><th>Soil</th><th>Light</th><th>Temp</th><th>Humidity</th><th>Pump</th><th>Lamp</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+<footer class="footer muted">
+  <div>SmartFarm Dashboard • Sakaeo School 🌿💛</div>
+  <div class="team">
+    <b>ผู้จัดทำ:</b>
+    <ul>
+      <li>ครูสุเมธ สายชล – ดูแลระบบและการพัฒนา Dashboard</li>
+      <li>ครูธนพัฒน์ ภักดี – ดูแลข้อมูล IOT และการวิเคราะห์ผล</li>
+      <li>ครูวราภัสร์ ภูสุนทร – ดูแลการใช้งานภายในโรงเรียน</li>
+    </ul>
+  </div>
+  <div>© 2025 Sakaeo School, Sakaeo • For educational use</div>
+</footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
