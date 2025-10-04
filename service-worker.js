@@ -1,41 +1,65 @@
-// Cache แบบเบสิกสำหรับ PWA/ออฟไลน์
-const CACHE = 'sf-cache-v1';
-const ASSETS = [
+// ==== SmartFarm SW (network-first for pages & scripts) ====
+// !! เปลี่ยนเลขเวอร์ชันทุกครั้งที่อัปเดต
+const VERSION = '2025-10-04-1';
+const CACHE = `sf-cache-${VERSION}`;
+
+const CORE_ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
-  './manifest.json',
-  'https://cdn.jsdelivr.net/npm/chart.js@4.4.1',
-  'https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js',
-  'https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js',
-  'https://cdn.jsdelivr.net/npm/dayjs@1/plugin/timezone.js',
-  'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
-  'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
-  'https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+  './profile.html',
+  './profile.js',
+  './manifest.json'
 ];
 
-self.addEventListener('install', e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
-  self.skipWaiting();
+self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE_ASSETS)));
+  self.skipWaiting(); // ใช้ SW ใหม่นี้ทันที
 });
-self.addEventListener('activate', e=>{
-  e.waitUntil(caches.keys().then(keys=>Promise.all(keys.map(k=> k!==CACHE && caches.delete(k)))));
+
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.map(k => (k !== CACHE ? caches.delete(k) : null)))
+    )
+  );
   self.clients.claim();
 });
-self.addEventListener('fetch', e=>{
-  const { request } = e;
-  if (request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(request).then(res => res || fetch(request).then(r=>{
-      // cache CDN GET responses
-      if(request.url.startsWith('http')) {
-        const clone = r.clone();
-        caches.open(CACHE).then(c=>c.put(request, clone));
-      }
-      return r;
-    }).catch(()=> caches.match('./index.html')))
-  );
+
+// HTML/CSS/JS = network-first (ได้ไฟล์ใหม่ก่อน ถ้าเน็ตล่มค่อยใช้ cache)
+// อื่น ๆ (รูป/ไอคอน/ฟอนต์) = cache-first
+self.addEventListener('fetch', (e) => {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+
+  const dest = req.destination; // 'document' | 'script' | 'style' | 'image' ...
+  const isPageLike = dest === 'document' || dest === 'script' || dest === 'style';
+
+  if (isPageLike) {
+    e.respondWith(
+      fetch(req).then((res) => {
+        const clone = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, clone));
+        return res;
+      }).catch(() => caches.match(req))
+    );
+  } else {
+    e.respondWith(
+      caches.match(req).then((hit) => {
+        return hit || fetch(req).then((res) => {
+          const clone = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, clone));
+          return res;
+        });
+      })
+    );
+  }
+});
+
+// แจ้งหน้าเว็บให้รีโหลดเมื่อ SW ตัวใหม่ทำงาน
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
