@@ -45,6 +45,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 /* ========= Core ========= */
+// ในส่วน load() หรือก่อน tick()
+function load(){
+  try {
+    settings = {...settings, ...(JSON.parse(localStorage.getItem('sf_settings')||'{}'))};
+    const profile = JSON.parse(localStorage.getItem('sf_profile')||'{}');
+    if(profile.soilMin){
+      settings.thSoil = profile.soilMin;  // ใช้ threshold จาก profile
+      settings.schedule.on = profile.lampOn;
+      settings.schedule.off = profile.lampOff;
+    }
+  } catch {}
+}
 async function tick(){
   $('#connTag').innerText = SCRIPT_URL ? 'connected' : 'offline demo';
   try{
