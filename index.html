@@ -24,16 +24,22 @@
 <body>
   <div id="app" class="container">
     <header class="header">
-      <h1><img src="icons/school-logo.png" alt="โลโก้โรงเรียน" width="60" style="margin-bottom:8px;">
- SmartFarm Control Panel🌿</h1>
-      <div class="header-right">
-        <span class="tag" id="connTag">offline demo</span>
-        <span class="muted">อัปเดต: <b id="lastUpdate">-</b></span>
-        <button class="btn ghost" id="btnTheme">โหมดสี</button>
-        <button class="btn ghost" id="btnInstall" style="display:none">ติดตั้งแอป</button>
-        <a class="btn brand2" href="profile.html">⚙️ ตั้งค่าโปรไฟล์ฟาร์ม</a>
-      </div>
-    </header>
+  <h1>
+    <img src="icons/school-logo.png" alt="โลโก้โรงเรียน" width="60" style="margin-bottom:8px;">
+    SmartFarm Control Panel🌿
+    <!-- ชื่อฟาร์มที่เลือก (จาก profile) -->
+    <span id="farmBadge" class="tag" title="โปรไฟล์ฟาร์ม">ยังไม่ตั้งค่า</span>
+  </h1>
+  <div class="header-right">
+    <!-- ปุ่มไปหน้าโปรไฟล์ (ตั้งค่าเกณฑ์ของแต่ละฟาร์ม) -->
+    <a class="btn brand2" href="profile.html">⚙️ ตั้งค่าโปรไฟล์ฟาร์ม</a>
+
+    <span class="tag" id="connTag">offline demo</span>
+    <span class="muted">อัปเดต: <b id="lastUpdate">-</b></span>
+    <button class="btn ghost" id="btnTheme">โหมดสี</button>
+    <button class="btn ghost" id="btnInstall" style="display:none">ติดตั้งแอป</button>
+  </div>
+</header>
 
     <!-- KPIs -->
     <section class="grid kpis">
