@@ -1,6 +1,6 @@
 /* ========= CONFIG ========= */
 // ใส่ URL ของ Google Apps Script Web App (ลงท้าย /exec) ถ้าเว้นว่างจะทำงานโหมด demo
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-jy0pXomTTM1ghVaQAF_ukVGpBbY0Xn29xauKlzTHJYg39ifpyBOOZikbmdvxpN58/exec"; // ← ใส่ลิงก์ของคุณ
+const SCRIPT_URL = ""; // ← ใส่ลิงก์ของคุณ
 
 const REFRESH_MS = 5000;
 const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok';
@@ -20,6 +20,10 @@ let settings = {
 };
 let beforeInstallPrompt = null;
 
+/* ==== Leaflet map vars (แก้ชื่อและย้ายประกาศขึ้นบนสุด) ==== */
+let leafletMap;   // << เดิมใช้ชื่อ map → เปลี่ยนเป็น leafletMap
+let marker;
+
 /* ========= Helpers ========= */
 const $ = s => document.querySelector(s);
 const avg = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
@@ -32,7 +36,7 @@ function load(){ try{ settings = {...settings, ...(JSON.parse(localStorage.getIt
 /* ========= Init ========= */
 load();
 wireEvents();
-initMap();
+initMap();          // ✅ เรียกหลังประกาศตัวแปร leafletMap/marker แล้ว
 renderTheme();
 tick(); setInterval(tick, REFRESH_MS);
 setInterval(scheduleWatcher, 30*1000);
@@ -47,7 +51,10 @@ async function tick(){
     draw();
     $('#lastUpdate').innerText = dayjs().tz(TZ).format('DD/MM HH:mm:ss');
     autoLogic();
-  }catch(e){ console.error('tick', e); }
+  }catch(e){ 
+    console.error('tick', e); 
+    showError('ดึงข้อมูลไม่สำเร็จ: ' + e.message + ' (ตรวจ SCRIPT_URL/สิทธิ์หรือ JSON)');
+  }
 }
 
 function mergeByTimestamp(oldArr, newArr){
@@ -59,8 +66,13 @@ function mergeByTimestamp(oldArr, newArr){
 async function fetchData(){
   const res = await fetch(SCRIPT_URL, {cache:'no-store'});
   if(!res.ok) throw new Error('HTTP '+res.status);
+
   const ct = res.headers.get('content-type')||'';
-  if(!ct.includes('application/json')) throw new Error('Not JSON');
+  if(!ct.includes('application/json')) {
+    const text = await res.text();
+    showError('Not JSON: ' + text.slice(0,200) + ' ...');
+    throw new Error('Not JSON');
+  }
   const arr = await res.json(); // [{timestamp,soil,light,pump,lamp,(opt)temp,humi}]
   return arr.map(x=>({temp: x.temp ?? rand(26,34), humi: x.humi ?? rand(55,85), ...x}));
 }
@@ -141,6 +153,12 @@ function draw(){
       notify('⚠️ Soil anomaly', `ค่าเบี่ยงเบนสูง (z=${anom.z.toFixed(2)}) ที่ ${fmt(soil.at(-1))}%`);
     }
   }
+}
+
+function showError(msg){
+  const tbody = document.querySelector("#dataTable tbody");
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="7" style="color:#b00">${msg}</td></tr>`;
 }
 
 function filterByRange(arr){
@@ -240,11 +258,10 @@ async function refreshWeather(){
 }
 
 /* ========= Map (Leaflet) ========= */
-let map, marker;
 function initMap(){
-  map = L.map('map').setView([settings.lat, settings.lon], 12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OSM'}).addTo(map);
-  marker = L.marker([settings.lat, settings.lon], {draggable:true}).addTo(map);
+  leafletMap = L.map('map').setView([settings.lat, settings.lon], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OSM'}).addTo(leafletMap);
+  marker = L.marker([settings.lat, settings.lon], {draggable:true}).addTo(leafletMap);
   marker.on('dragend', e=>{
     const {lat, lng} = e.target.getLatLng();
     settings.lat = lat; settings.lon = lng; save(); refreshWeather();
@@ -373,7 +390,8 @@ function wireEvents(){
     navigator.geolocation.getCurrentPosition(pos=>{
       const {latitude, longitude} = pos.coords;
       settings.lat = latitude; settings.lon = longitude; save();
-      marker.setLatLng([latitude, longitude]); map.setView([latitude, longitude], 13);
+      marker.setLatLng([latitude, longitude]); 
+      leafletMap.setView([latitude, longitude], 13);  // << ใช้ leafletMap แทน map
       refreshWeather();
     }, ()=> alert('ไม่สามารถอ่านตำแหน่ง'));
   };
