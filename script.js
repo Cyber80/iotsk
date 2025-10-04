@@ -6,6 +6,7 @@ let soilChart, lightChart;
 async function loadData() {
   const res = await fetch(SCRIPT_URL);
   const data = await res.json();
+  console.log(data); // debug ดูก่อนว่ามาถูก
 
   const headers = data[0];
   const rows = data.slice(1);
