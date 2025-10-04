@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>SmartFarm Profile Setup</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container card">
+    <h1>⚙️ ตั้งค่าโปรไฟล์ฟาร์ม</h1>
+
+    <label>เลือกประเภทฟาร์ม:</label>
+    <select id="farmSelect"></select>
+
+    <div id="profileDetails" class="card mt">
+      <h2 id="farmName">เลือกฟาร์มด้านบน</h2>
+      <p id="remark" class="muted"></p>
+
+      <table class="profile-table">
+        <tr><td>ความชื้นเหมาะสม</td><td><input id="soilMin" type="number">–<input id="soilMax" type="number"> %</td></tr>
+        <tr><td>แสงขั้นต่ำ</td><td><input id="lightMin" type="number"> lux</td></tr>
+        <tr><td>เวลารดน้ำ</td><td><input id="pumpSec" type="number"> วินาที</td></tr>
+        <tr><td>เปิดไฟ</td><td><input id="lampOn" type="time"> ถึง <input id="lampOff" type="time"></td></tr>
+      </table>
+
+      <button id="btnSave" class="btn primary">💾 บันทึกค่าฟาร์มนี้</button>
+      <button id="btnExport" class="btn">⬇️ Export JSON</button>
+      <input type="file" id="fileImport" accept=".json" style="display:none">
+      <button id="btnImport" class="btn">⬆️ Import JSON</button>
+    </div>
+
+    <footer class="footer muted">
+      <a href="index.html">← กลับไปหน้า Dashboard</a>
+    </footer>
+  </div>
+
+  <script src="profile.js"></script>
+</body>
+</html>
