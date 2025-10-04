@@ -1,6 +1,6 @@
 /* ========= CONFIG ========= */
 // ใส่ URL ของ Google Apps Script Web App (ลงท้าย /exec) ถ้าเว้นว่างจะทำงานโหมด demo
-const SCRIPT_URL = ""; // ← ใส่ลิงก์ของคุณ
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-jy0pXomTTM1ghVaQAF_ukVGpBbY0Xn29xauKlzTHJYg39ifpyBOOZikbmdvxpN58/exec"; // ← ใส่ลิงก์ของคุณ
 
 const REFRESH_MS = 5000;
 const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok';
