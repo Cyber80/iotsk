@@ -1,28 +1,25 @@
 /* ========= CONFIG ========= */
-// ใส่ URL ของ Google Apps Script Web App (ลงท้าย /exec) ถ้าเว้นว่างจะทำงานโหมด demo
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-jy0pXomTTM1ghVaQAF_ukVGpBbY0Xn29xauKlzTHJYg39ifpyBOOZikbmdvxpN58/exec"; // ← ใส่ลิงก์ของคุณ
-
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-jy0pXomTTM1ghVaQAF_ukVGpBbY0Xn29xauKlzTHJYg39ifpyBOOZikbmdvxpN58/exec"; //ระบุลิงก์ของคุณ
 const REFRESH_MS = 5000;
 const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok';
-// เปิดลดน้ำอัตโนมัติเมื่อฝนคาดการณ์ > ค่า (mm ภายใน 24 ชม.)
 const RAIN_SKIP_MM = 3;
 
 /* ========= STATE ========= */
-let RAW = [];                           // {timestamp, soil, light, temp, humi, pump, lamp}
+let RAW = [];
 let chartMain, chartTH;
 let device = { pump:0, lamp:0 };
 let settings = {
   thSoil: 35, maxPumpMin: 10, autoEnforce: 'off',
   schedule: { enable:'on', on:'06:30', off:'06:45' },
   modeAuto: false,
-  lat: 14.2, lon: 101.2,                 // ค่าเริ่มต้น (นครนายกประมาณนี้)
+  lat: 14.2, lon: 101.2,
   dark: false
 };
 let beforeInstallPrompt = null;
 
-/* ==== Leaflet map vars (แก้ชื่อและย้ายประกาศขึ้นบนสุด) ==== */
-let leafletMap;   // << เดิมใช้ชื่อ map → เปลี่ยนเป็น leafletMap
-let marker;
+/* ==== Leaflet map vars ==== */
+let leafletMap = null;
+let marker = null;
 
 /* ========= Helpers ========= */
 const $ = s => document.querySelector(s);
@@ -34,13 +31,18 @@ function save(){ localStorage.setItem('sf_settings', JSON.stringify(settings)); 
 function load(){ try{ settings = {...settings, ...(JSON.parse(localStorage.getItem('sf_settings')||'{}')) }; }catch{} }
 
 /* ========= Init ========= */
-load();
-wireEvents();
-initMap();          // ✅ เรียกหลังประกาศตัวแปร leafletMap/marker แล้ว
-renderTheme();
-tick(); setInterval(tick, REFRESH_MS);
-setInterval(scheduleWatcher, 30*1000);
-registerSW();
+// ✅ รอให้ DOM โหลดเสร็จ และทุกฟังก์ชันถูกประกาศครบก่อน
+document.addEventListener('DOMContentLoaded', () => {
+  load();
+  wireEvents();
+  renderTheme();
+  initMap(); // ✅ เรียกหลังประกาศฟังก์ชันแล้ว
+  tick();
+  setInterval(tick, REFRESH_MS);
+  setInterval(scheduleWatcher, 30 * 1000);
+  registerSW();
+});
+
 
 /* ========= Core ========= */
 async function tick(){
