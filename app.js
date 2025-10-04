@@ -55,6 +55,10 @@ function load(){
       settings.schedule.on = profile.lampOn;
       settings.schedule.off = profile.lampOff;
     }
+        // 👉 อัปเดต badge ให้เห็นชื่อฟาร์ม
+    const fb = document.getElementById('farmBadge');
+    if (fb) fb.textContent = profile.name ? profile.name : 'ยังไม่ตั้งค่า';
+
   } catch {}
 }
 async function tick(){
