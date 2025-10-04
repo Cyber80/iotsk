@@ -438,3 +438,25 @@ async function registerSW(){
     try{ await navigator.serviceWorker.register('service-worker.js'); }catch(e){ console.warn('SW', e); }
   }
 }
+// auto-reload เมื่อ SW ใหม่ activate
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // เมื่อ SW ใหม่มาคุมหน้าแล้ว ให้รีโหลด 1 ครั้ง
+    location.reload();
+  });
+}
+
+// (ออปชัน) ถ้าอยากกดปุ่มในแอปเพื่อบังคับอัปเดตทันที
+async function checkUpdateAndRefresh() {
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg && reg.waiting) {
+      reg.waiting.postMessage('SKIP_WAITING');
+    } else if (reg) {
+      await reg.update();
+    }
+  } catch (e) { console.warn(e); }
+}
+
+
+
