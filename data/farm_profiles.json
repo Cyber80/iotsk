@@ -1,0 +1,46 @@
+[
+  {
+    "id": "mushroom",
+    "name": "ฟาร์มเห็ด",
+    "soilMin": 85,
+    "soilMax": 95,
+    "lightMin": 200,
+    "pumpSec": 20,
+    "lampOn": "17:00",
+    "lampOff": "22:00",
+    "remark": "ชอบชื้น แสงน้อย"
+  },
+  {
+    "id": "vegetable",
+    "name": "พืชสวนครัว",
+    "soilMin": 40,
+    "soilMax": 60,
+    "lightMin": 400,
+    "pumpSec": 60,
+    "lampOn": "06:00",
+    "lampOff": "18:00",
+    "remark": "ชอบแสงมาก"
+  },
+  {
+    "id": "orchid",
+    "name": "ฟาร์มกล้วยไม้",
+    "soilMin": 60,
+    "soilMax": 75,
+    "lightMin": 600,
+    "pumpSec": 40,
+    "lampOn": "07:00",
+    "lampOff": "17:00",
+    "remark": "ชื้นปานกลาง"
+  },
+  {
+    "id": "melon",
+    "name": "ฟาร์มเมล่อน",
+    "soilMin": 35,
+    "soilMax": 45,
+    "lightMin": 700,
+    "pumpSec": 90,
+    "lampOn": "08:00",
+    "lampOff": "18:00",
+    "remark": "แห้งเล็กน้อย"
+  }
+]
