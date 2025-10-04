@@ -1,0 +1,70 @@
+body {
+  font-family: 'Prompt', sans-serif;
+  text-align: center;
+  background: #f0f8f5;
+  color: #333;
+}
+
+h1 {
+  background: #4caf50;
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  display: inline-block;
+  margin-top: 20px;
+}
+
+.control-panel {
+  margin: 20px;
+}
+
+.btn {
+  background: #4caf50;
+  border: none;
+  color: white;
+  padding: 15px 30px;
+  margin: 5px;
+  font-size: 18px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #45a049;
+}
+
+.chart-container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 30px auto;
+  width: 90%;
+}
+
+canvas {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  padding: 10px;
+  width: 45%;
+  max-width: 500px;
+}
+
+.data-table {
+  width: 80%;
+  margin: auto;
+  background: white;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  border-bottom: 1px solid #ccc;
+  padding: 8px;
+}

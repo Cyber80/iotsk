@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Farm Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>🌿 Smart Farm Control Panel</h1>
+
+  <div class="control-panel">
+    <button id="btnLamp" class="btn">💡 เปิดไฟ</button>
+    <button id="btnPump" class="btn">💧 เปิดปั๊มน้ำ</button>
+  </div>
+
+  <div class="status">
+    <p>สถานะไฟ: <span id="lampStatus">-</span></p>
+    <p>สถานะปั๊ม: <span id="pumpStatus">-</span></p>
+  </div>
+
+  <div class="chart-container">
+    <canvas id="soilChart"></canvas>
+    <canvas id="lightChart"></canvas>
+  </div>
+
+  <div class="data-table">
+    <h2>ข้อมูลล่าสุด</h2>
+    <table id="dataTable">
+      <thead><tr><th>เวลา</th><th>Soil</th><th>Light</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
