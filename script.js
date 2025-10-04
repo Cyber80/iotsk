@@ -1,4 +1,4 @@
-const SCRIPT_URL = "PUT_YOUR_LATEST_WEB_APP_URL_HERE";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-jy0pXomTTM1ghVaQAF_ukVGpBbY0Xn29xauKlzTHJYg39ifpyBOOZikbmdvxpN58/exec";
 
 let soilChart, lightChart;
 
