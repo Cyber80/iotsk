@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SmartFarm Dashboard</title>
+
+<!-- ====== CDN libs ====== -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/timezone.js"></script>
+<script>dayjs.extend(dayjs_plugin_utc); dayjs.extend(dayjs_plugin_timezone);</script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<!-- ====== Minimal, elegant style ====== -->
+<style>
+  :root{
+    --bg:#f4f9f6; --card:#fff; --text:#1f2937; --muted:#6b7280;
+    --brand:#22c55e; --brand-2:#0ea5e9; --warn:#f59e0b; --danger:#ef4444;
+    --ring: 0 10px 30px rgba(16,185,129,.15);
+    --radius:20px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,Segoe UI,Inter,Arial}
+  .container{max-width:1200px;margin:24px auto;padding:0 16px}
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    background:linear-gradient(135deg,#22c55e,#16a34a);
+    color:#fff;padding:18px 22px;border-radius:16px;box-shadow:var(--ring)
+  }
+  header h1{margin:0;font-size:24px;font-weight:800;display:flex;gap:10px;align-items:center}
+  header .right{display:flex;gap:10px;align-items:center}
+  .tag{background:rgba(255,255,255,.15);padding:6px 10px;border-radius:999px;font-size:13px}
+  .grid{display:grid;gap:16px}
+  .grid.cols-3{grid-template-columns: repeat(3,1fr)}
+  .grid.cols-2{grid-template-columns: repeat(2,1fr)}
+  @media (max-width:900px){.grid.cols-3{grid-template-columns:1fr}.grid.cols-2{grid-template-columns:1fr}}
+  .card{
+    background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.04)
+  }
+  .card h3{margin:0 0 10px 0;font-size:16px}
+  .kpi{display:flex;gap:14px;align-items:center}
+  .kpi .val{font-size:28px;font-weight:800}
+  .kpi small{color:var(--muted)}
+  .sep{height:1px;background:#e5e7eb;margin:12px 0}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .btn{
+    border:0;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:600;
+    background:#e5e7eb;color:#111;transition:.15s box-shadow,.15s transform
+  }
+  .btn:hover{transform:translateY(-1px)}
+  .btn.brand{background:var(--brand);color:#fff}
+  .btn.brand2{background:var(--brand-2);color:#fff}
+  .btn.warn{background:var(--warn);color:#111}
+  .btn.danger{background:var(--danger);color:#fff}
+  .btn.ghost{background:transparent;border:1px solid #e5e7eb}
+  .switch{display:flex;gap:8px;align-items:center}
+  .switch input{width:42px;height:24px}
+  .mini{font-size:13px;color:var(--muted)}
+  .label{font-size:13px;color:var(--muted)}
+  .field{display:grid;gap:6px}
+  input[type="number"], input[type="time"], select, input[type="text"]{
+    padding:9px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;min-width:100px
+  }
+  .chartwrap{height:280px}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px 6px;border-bottom:1px solid #eef2f7;text-align:left}
+  th{color:var(--muted);font-weight:600}
+  .pill{padding:2px 8px;border-radius:999px;font-size:12px}
+  .pill.on{background:#dcfce7;color:#166534}
+  .pill.off{background:#fee2e2;color:#991b1b}
+  .footer{color:var(--muted);font-size:12px;text-align:center;margin:16px 0}
+</style>
+</head>
+
+<body>
+<div class="container" id="dashboard-root">
+  <header>
+    <h1>🌿 SmartFarm Control Panel <span class="tag" id="connTag">offline demo</span></h1>
+    <div class="right">
+      <span class="mini">อัปเดตล่าสุด: <b id="lastUpdate">-</b></span>
+      <button class="btn ghost" id="btnTheme">Toggle Theme</button>
+    </div>
+  </header>
+
+  <!-- ===== KPIs ===== -->
+  <section class="grid cols-3" style="margin-top:16px">
+    <div class="card">
+      <h3>Soil Moisture</h3>
+      <div class="kpi"><div class="val" id="kpi-soil">-</div><small>%</small></div>
+      <div class="mini">ค่าเฉลี่ย 24 ชม. <b id="avg-soil">-</b>%</div>
+    </div>
+    <div class="card">
+      <h3>Light</h3>
+      <div class="kpi"><div class="val" id="kpi-light">-</div><small>lux</small></div>
+      <div class="mini">ค่าเฉลี่ย 24 ชม. <b id="avg-light">-</b> lux</div>
+    </div>
+    <div class="card">
+      <h3>อุปกรณ์</h3>
+      <div class="row">
+        ไฟ: <span id="lampStatus" class="pill off">OFF</span>
+        ปั๊ม: <span id="pumpStatus" class="pill off">OFF</span>
+      </div>
+      <div class="sep"></div>
+      <div class="row">
+        <button class="btn brand2" id="btnLamp">สลับไฟ 💡</button>
+        <button class="btn brand" id="btnPump">สลับปั๊ม 💧</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Charts ===== -->
+  <section class="grid cols-2" style="margin-top:10px">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h3>Soil & Light</h3>
+        <div class="row">
+          <select id="rangeSelect">
+            <option value="24h">24 ชั่วโมง</option>
+            <option value="7d">7 วัน</option>
+            <option value="30d">30 วัน</option>
+            <option value="1y">1 ปี</option>
+            <option value="custom">กำหนดเอง</option>
+          </select>
+          <input type="date" id="fromDate" style="display:none">
+          <input type="date" id="toDate" style="display:none">
+          <button class="btn" id="btnApplyRange" title="Apply">ดูข้อมูล</button>
+        </div>
+      </div>
+      <div class="chartwrap"><canvas id="chartMain"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h3>Temperature & Humidity</h3>
+      <div class="chartwrap"><canvas id="chartTH"></canvas></div>
+    </div>
+  </section>
+
+  <!-- ===== Auto/Manual Control ===== -->
+  <section class="grid cols-2" style="margin-top:10px">
+    <div class="card">
+      <h3>โหมดควบคุม</h3>
+      <div class="row">
+        <label class="switch"><input type="checkbox" id="modeAuto"> <span>Auto</span></label>
+        <span class="mini">เมื่อ Auto ทำงาน ระบบจะ “แนะนำ” และสั่งอุปกรณ์อัตโนมัติ (ถ้าเปิดอนุญาต)</span>
+      </div>
+      <div class="sep"></div>
+
+      <div class="grid cols-3">
+        <div class="field">
+          <label class="label">Threshold Soil (%)</label>
+          <input type="number" id="thSoil" min="0" max="100" step="1" value="35">
+          <span class="mini">ต่ำกว่า → เปิดปั๊ม</span>
+        </div>
+        <div class="field">
+          <label class="label">Max Pump (นาที)</label>
+          <input type="number" id="maxPumpMin" min="1" max="60" step="1" value="10">
+          <span class="mini">กันเปิดปั๊มนานเกินไป</span>
+        </div>
+        <div class="field">
+          <label class="label">เปิด/ปิดอัตโนมัติจริง</label>
+          <select id="autoEnforce">
+            <option value="off">แค่แนะนำ</option>
+            <option value="on">อนุญาตให้สั่งงาน</option>
+          </select>
+          <span class="mini">ต้องตั้ง SCRIPT_URL ให้ถูก</span>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+      <div id="autoAdvice" class="mini">คำแนะนำอัตโนมัติ: -</div>
+    </div>
+
+    <div class="card">
+      <h3>Schedule รายวัน</h3>
+      <div class="grid cols-3">
+        <div class="field">
+          <label class="label">เปิดปั๊ม (เวลา)</label>
+          <input type="time" id="schOn" value="06:30">
+        </div>
+        <div class="field">
+          <label class="label">ปิดปั๊ม (เวลา)</label>
+          <input type="time" id="schOff" value="06:45">
+        </div>
+        <div class="field">
+          <label class="label">ใช้งาน Schedule</label>
+          <select id="schEnable">
+            <option value="on">เปิดใช้งาน</option>
+            <option value="off">ปิด</option>
+          </select>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="mini">ระบบจะเช็คเวลาทุก ๆ 30 วินาที และส่งคำสั่งหากถึงเวลา (เมื่ออนุญาต)</div>
+    </div>
+  </section>
+
+  <!-- ===== Data ops: Import/Export ===== -->
+  <section class="card" style="margin-top:10px">
+    <h3>นำเข้า/ส่งออก</h3>
+    <div class="row" style="flex-wrap:wrap;gap:8px 12px">
+      <button class="btn" id="btnExportCSV">Export CSV</button>
+      <button class="btn" id="btnExportPNG">Export PNG</button>
+      <button class="btn" id="btnExportJPG">Export JPG</button>
+      <button class="btn" id="btnExportPDF">Export PDF</button>
+      <span class="mini">รายวัน/เดือน/ปี ใช้ตัวเลือกช่วงเวลา (ซ้ายบนกราฟ) แล้วค่อย Export</span>
+      <span class="sep" style="width:100%;border-top:0"></span>
+      <input type="file" id="fileImport" accept=".json,.csv" />
+      <button class="btn ghost" id="btnImport">Import</button>
+    </div>
+  </section>
+
+  <!-- ===== Table ===== -->
+  <section class="card" style="margin-top:10px">
+    <h3>ข้อมูลล่าสุด</h3>
+    <div style="overflow:auto;max-height:300px">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th>เวลา</th><th>Soil</th><th>Light</th><th>Temp</th><th>Humidity</th><th>Pump</th><th>Lamp</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="footer">SmartFarm • ตัวอย่างแดชบอร์ด | คุณสามารถปรับแต่ง/ต่อ API ได้ตามต้องการ</div>
+</div>
+
+<script>
+/* ==================== CONFIG ==================== */
+// 1) วาง URL ของ Google Apps Script (Web App) ที่ลงท้ายด้วย /exec
+const SCRIPT_URL = ""; // <<<<< ใส่ลิงก์ของคุณ ถ้าว่างจะทำงานโหมด offline demo
+
+// 2) refresh interval (ms)
+const REFRESH_MS = 5000;
+
+// 3) กำหนด timezone
+const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok';
+
+/* ==================== STATE ==================== */
+let RAW = [];            // เก็บข้อมูลทั้งหมด [{timestamp, soil, light, temp, humi, pump, lamp}]
+let chartMain, chartTH;
+let device = { pump: 0, lamp: 0 };
+let settings = {
+  thSoil: 35,
+  maxPumpMin: 10,
+  autoEnforce: 'off',
+  schedule: { enable: 'on', on: '06:30', off: '06:45' },
+  modeAuto: false
+};
+
+/* ==================== INIT ==================== */
+const $ = sel => document.querySelector(sel);
+const $$ = sel => document.querySelectorAll(sel);
+
+restoreSettings();
+wireEvents();
+tick(); setInterval(tick, REFRESH_MS);
+scheduleWatcher(); setInterval(scheduleWatcher, 30*1000);
+renderTheme();
+
+/* ==================== FUNCTIONS ==================== */
+async function tick(){
+  const useAPI = !!SCRIPT_URL;
+  $('#connTag').innerText = useAPI ? 'connected' : 'offline demo';
+  try{
+    const data = useAPI ? await fetchData() : await demoData();
+    if(!Array.isArray(data)) throw new Error('bad data');
+    RAW = mergeAndSort(RAW, data);
+    draw();
+    $('#lastUpdate').innerText = dayjs().tz(TZ).format('DD/MM HH:mm:ss');
+    autoLogic();
+  }catch(err){
+    console.error('tick error', err);
+  }
+}
+
+function mergeAndSort(oldArr, newArr){
+  const m = new Map(oldArr.map(d => [d.timestamp, d]));
+  newArr.forEach(d => m.set(d.timestamp, d));
+  return Array.from(m.values()).sort((a,b)=> new Date(a.timestamp)-new Date(b.timestamp));
+}
+
+async function fetchData(){
+  const res = await fetch(SCRIPT_URL, {cache:'no-store'});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const ct = res.headers.get('content-type')||'';
+  if(!ct.includes('application/json')) throw new Error('Not JSON');
+  const arr = await res.json();
+  // รองรับกรณีที่ไม่มี temp/humi
+  return arr.map(x=>({temp: x.temp ?? rand(26,34), humi: x.humi ?? rand(55,85), ...x}));
+}
+
+async function demoData(){
+  // เติมข้อมูลจำลองเพิ่มครั้งละ 1–3 จุด
+  const now = dayjs();
+  const points = rand(1,3);
+  const out = [];
+  for(let i=0;i<points;i++){
+    out.push({
+      timestamp: now.subtract(rand(0,10),'second').toISOString(),
+      soil: clamp((RAW.at(-1)?.soil ?? rand(30,60)) + rand(-2,2), 5, 95),
+      light: clamp((RAW.at(-1)?.light ?? rand(300,900)) + rand(-50,50), 0, 1500),
+      temp: clamp((RAW.at(-1)?.temp ?? rand(28,33)) + rand(-1,1), 22, 40),
+      humi: clamp((RAW.at(-1)?.humi ?? rand(60,80)) + rand(-3,3), 35, 95),
+      pump: device.pump, lamp: device.lamp
+    });
+  }
+  return out;
+}
+
+function draw(){
+  // ช่วงเวลา
+  const range = getRangeFilter();
+  const rows = RAW.filter(r => {
+    const t = dayjs(r.timestamp);
+    return (!range.from || t.isAfter(range.from)) && (!range.to || t.isBefore(range.to));
+  });
+
+  // KPIs
+  const last = rows.at(-1) || RAW.at(-1);
+  $('#kpi-soil').innerText = last ? Number(last.soil).toFixed(0) : '-';
+  $('#kpi-light').innerText = last ? Number(last.light).toFixed(0) : '-';
+  $('#avg-soil').innerText = rows.length ? avg(rows.map(r=>+r.soil)).toFixed(1) : '-';
+  $('#avg-light').innerText = rows.length ? avg(rows.map(r=>+r.light)).toFixed(0) : '-';
+  updateStatus(last);
+
+  // Table
+  const tbody = $('#dataTable tbody'); tbody.innerHTML = '';
+  rows.slice(-50).reverse().forEach(d=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${dayjs(d.timestamp).tz(TZ).format('DD/MM HH:mm:ss')}</td>
+                    <td>${fmt(d.soil)}</td><td>${fmt(d.light)}</td>
+                    <td>${fmt(d.temp)}</td><td>${fmt(d.humi)}</td>
+                    <td>${d.pump? 'ON':'OFF'}</td><td>${d.lamp? 'ON':'OFF'}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Charts
+  const labels = rows.map(d=> dayjs(d.timestamp).tz(TZ).format('DD/MM HH:mm'));
+  const soil   = rows.map(d=> +d.soil);
+  const light  = rows.map(d=> +d.light);
+  const temp   = rows.map(d=> +d.temp);
+  const humi   = rows.map(d=> +d.humi);
+
+  // main chart
+  if(chartMain) chartMain.destroy();
+  chartMain = new Chart($('#chartMain'), {
+    type:'line',
+    data:{ labels, datasets:[
+      {label:'Soil (%)', data:soil, yAxisID:'y', tension:.3, borderColor:'#22c55e', pointRadius:0 },
+      {label:'Light (lux)', data:light, yAxisID:'y1', tension:.3, borderColor:'#f59e0b', pointRadius:0 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ y:{ title:{display:true,text:'Soil %'}}, y1:{ position:'right', grid:{drawOnChartArea:false}, title:{display:true,text:'Lux'}}},
+      plugins:{ legend:{display:true}}
+    }
+  });
+
+  if(chartTH) chartTH.destroy();
+  chartTH = new Chart($('#chartTH'), {
+    type:'line',
+    data:{ labels, datasets:[
+      {label:'Temp (°C)', data:temp, tension:.3, borderColor:'#ef4444', pointRadius:0 },
+      {label:'Humidity (%)', data:humi, tension:.3, borderColor:'#0ea5e9', pointRadius:0 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false }
+  });
+}
+
+function updateStatus(last){
+  const lampEl = $('#lampStatus'), pumpEl = $('#pumpStatus');
+  const lampOn = last && (last.lamp===1 || last.lamp==='1' || last.lamp===true || String(last.lamp).toUpperCase?.() === 'ON');
+  const pumpOn = last && (last.pump===1 || last.pump==='1' || last.pump===true || String(last.pump).toUpperCase?.() === 'ON');
+  lampEl.className = 'pill ' + (lampOn?'on':'off'); lampEl.textContent = lampOn?'ON':'OFF';
+  pumpEl.className = 'pill ' + (pumpOn?'on':'off'); pumpEl.textContent = pumpOn?'ON':'OFF';
+  device = { pump: pumpOn?1:0, lamp: lampOn?1:0 };
+}
+
+/* ========= Auto Logic ========= */
+function autoLogic(){
+  if(!settings.modeAuto) { $('#autoAdvice').innerText = 'คำแนะนำอัตโนมัติ: โหมด Manual'; return; }
+  const last = RAW.at(-1); if(!last) return;
+
+  let advice = [];
+  if(+last.soil < settings.thSoil){
+    advice.push('ควรเปิดปั๊ม (ดินแห้ง)');
+    if(settings.autoEnforce==='on' && !device.pump) controlDevice('pump','on', true);
+  }else{
+    advice.push('ความชื้นเพียงพอ');
+    if(settings.autoEnforce==='on' && device.pump) controlDevice('pump','off', true);
+  }
+  $('#autoAdvice').innerText = 'คำแนะนำอัตโนมัติ: ' + advice.join(' • ');
+}
+
+/* ========= Schedule ========= */
+function scheduleWatcher(){
+  if(settings.schedule.enable!=='on') return;
+  const now = dayjs().tz(TZ);
+  const [hOn,mOn] = settings.schedule.on.split(':').map(Number);
+  const [hOff,mOff] = settings.schedule.off.split(':').map(Number);
+  const tOn = now.hour(hOn).minute(mOn);
+  const tOff= now.hour(hOff).minute(mOff);
+
+  // ภายในช่วง 45 วินาทีแรกของเวลาที่กำหนดจะสั่งงาน (กันยิงซ้ำบ่อย)
+  const near = (target)=> Math.abs(now.diff(target,'second'))<=45;
+
+  if(settings.autoEnforce==='on'){
+    if(near(tOn))  controlDevice('pump','on', true);
+    if(near(tOff)) controlDevice('pump','off', true);
+  }
+}
+
+/* ========= Control Device ========= */
+async function controlDevice(dev, state='toggle', silent=false){
+  // อัปเดตสถานะในหน้าก่อน (optimistic)
+  if(dev==='lamp'){ device.lamp = state==='toggle' ? (device.lamp?0:1) : (state==='on'?1:0); }
+  if(dev==='pump'){ device.pump = state==='toggle' ? (device.pump?0:1) : (state==='on'?1:0); }
+  updateStatus({lamp:device.lamp, pump:device.pump});
+
+  if(!SCRIPT_URL){ if(!silent) alert('ยังไม่ได้ตั้ง SCRIPT_URL (สาธิตออฟไลน์เท่านั้น)'); return; }
+  try{
+    const res = await fetch(SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ control: dev, state })
+    });
+    await res.json().catch(()=> ({}));
+    // รีเฟรชข้อมูลรอบถัดไป
+  }catch(e){ console.error('controlDevice', e); }
+}
+
+/* ========= Import / Export ========= */
+function exportCSV(){
+  if(!RAW.length){ alert('ยังไม่มีข้อมูล'); return; }
+  const rows = [['timestamp','soil','light','temp','humi','pump','lamp']];
+  RAW.forEach(d=> rows.push([d.timestamp,d.soil,d.light,d.temp,d.humi,d.pump,d.lamp]));
+  const csv = Papa.unparse(rows);
+  downloadBlob(new Blob([csv],{type:'text/csv'}), 'smartfarm.csv');
+}
+
+async function exportImage(type='png'){
+  const node = $('#dashboard-root');
+  const canvas = await html2canvas(node, {scale:2, backgroundColor: null});
+  const dataURL = canvas.toDataURL('image/'+type);
+  downloadDataURL(dataURL, 'dashboard.'+(type==='jpeg'?'jpg':type));
+}
+
+async function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  const node = $('#dashboard-root');
+  const canvas = await html2canvas(node, {scale:2, backgroundColor:'#ffffff'});
+  const img = canvas.toDataURL('image/png');
+  const pdf = new jsPDF('l','pt','a4');
+  const w = pdf.internal.pageSize.getWidth();
+  const h = pdf.internal.pageSize.getHeight();
+  const ratio = Math.min(w/canvas.width, h/canvas.height);
+  const iw = canvas.width*ratio, ih = canvas.height*ratio;
+  pdf.addImage(img, 'PNG', (w-iw)/2, (h-ih)/2, iw, ih);
+  pdf.save('dashboard.pdf');
+}
+
+function importFile(file){
+  if(!file){ alert('ยังไม่ได้เลือกไฟล์'); return; }
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      let arr=[];
+      if(ext==='json'){
+        arr = JSON.parse(e.target.result);
+      }else if(ext==='csv'){
+        const parsed = Papa.parse(e.target.result, {header:true, skipEmptyLines:true});
+        arr = parsed.data;
+      }else throw new Error('รองรับ .json/.csv');
+
+      arr = arr.map(x=>({
+        timestamp: new Date(x.timestamp).toISOString(),
+        soil: +x.soil, light:+x.light,
+        temp: +x.temp || rand(26,34), humi: +x.humi || rand(55,85),
+        pump: +x.pump || 0, lamp:+x.lamp || 0
+      }));
+      RAW = mergeAndSort(RAW, arr);
+      draw();
+      alert('นำเข้าข้อมูลสำเร็จ: '+arr.length+' แถว');
+    }catch(err){ alert('นำเข้าไม่สำเร็จ: '+err.message); }
+  };
+  reader.readAsText(file);
+}
+
+/* ========= UI Helpers ========= */
+function getRangeFilter(){
+  const v = $('#rangeSelect').value;
+  const to = dayjs();
+  if(v==='24h') return {from: to.subtract(24,'hour'), to};
+  if(v==='7d')  return {from: to.subtract(7,'day'), to};
+  if(v==='30d') return {from: to.subtract(30,'day'), to};
+  if(v==='1y')  return {from: to.subtract(1,'year'), to};
+  if(v==='custom'){
+    const f = $('#fromDate').value? dayjs($('#fromDate').value) : null;
+    const t = $('#toDate').value? dayjs($('#toDate').value).endOf('day') : null;
+    return {from:f,to:t};
+  }
+  return {to};
+}
+
+function wireEvents(){
+  $('#btnLamp').onclick = ()=> controlDevice('lamp','toggle');
+  $('#btnPump').onclick = ()=> controlDevice('pump','toggle');
+
+  $('#rangeSelect').onchange = e=>{
+    const custom = e.target.value==='custom';
+    $('#fromDate').style.display = custom?'block':'none';
+    $('#toDate').style.display   = custom?'block':'none';
+  };
+  $('#btnApplyRange').onclick = draw;
+
+  $('#modeAuto').onchange = e=>{ settings.modeAuto = e.target.checked; saveSettings(); autoLogic(); };
+  $('#thSoil').onchange = e=>{ settings.thSoil = +e.target.value; saveSettings(); };
+  $('#maxPumpMin').onchange = e=>{ settings.maxPumpMin = +e.target.value; saveSettings(); };
+  $('#autoEnforce').onchange = e=>{ settings.autoEnforce = e.target.value; saveSettings(); };
+  $('#schOn').onchange = e=>{ settings.schedule.on = e.target.value; saveSettings(); };
+  $('#schOff').onchange = e=>{ settings.schedule.off= e.target.value; saveSettings(); };
+  $('#schEnable').onchange = e=>{ settings.schedule.enable = e.target.value; saveSettings(); };
+
+  $('#btnExportCSV').onclick = exportCSV;
+  $('#btnExportPNG').onclick = ()=> exportImage('png');
+  $('#btnExportJPG').onclick = ()=> exportImage('jpeg');
+  $('#btnExportPDF').onclick = exportPDF;
+
+  $('#btnImport').onclick = ()=> importFile($('#fileImport').files[0]);
+  $('#btnTheme').onclick = toggleTheme;
+}
+
+function saveSettings(){ localStorage.setItem('sf_settings', JSON.stringify(settings)); }
+function restoreSettings(){
+  try{
+    const s = JSON.parse(localStorage.getItem('sf_settings')||'{}');
+    settings = {...settings, ...s};
+  }catch{}
+  $('#modeAuto').checked = settings.modeAuto;
+  $('#thSoil').value = settings.thSoil;
+  $('#maxPumpMin').value = settings.maxPumpMin;
+  $('#autoEnforce').value = settings.autoEnforce;
+  $('#schOn').value = settings.schedule.on;
+  $('#schOff').value = settings.schedule.off;
+  $('#schEnable').value = settings.schedule.enable;
+}
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
+}
+function downloadDataURL(dataURL, filename){
+  const a = document.createElement('a'); a.href=dataURL; a.download=filename; document.body.appendChild(a); a.click(); setTimeout(()=>a.remove(), 300);
+}
+
+function toggleTheme(){
+  const dark = document.body.dataset.theme==='dark';
+  document.body.dataset.theme = dark? '' : 'dark';
+  renderTheme();
+}
+function renderTheme(){
+  if(document.body.dataset.theme==='dark'){
+    document.documentElement.style.setProperty('--bg','#0b1220');
+    document.documentElement.style.setProperty('--card','#101a2b');
+    document.documentElement.style.setProperty('--text','#e5e7eb');
+    document.documentElement.style.setProperty('--muted','#9ca3af');
+    document.documentElement.style.setProperty('--ring','0 10px 30px rgba(34,197,94,.15)');
+  }else{
+    document.documentElement.style.setProperty('--bg','#f4f9f6');
+    document.documentElement.style.setProperty('--card','#fff');
+    document.documentElement.style.setProperty('--text','#1f2937');
+    document.documentElement.style.setProperty('--muted','#6b7280');
+  }
+}
+
+/* ========= Utils ========= */
+const avg = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+const clamp = (n,min,max)=> Math.max(min, Math.min(max,n));
+const rand = (a,b)=> Math.floor(Math.random()*(b-a+1))+a;
+const fmt = v => (v===undefined||v===null)?'-':Number(v).toFixed(0);
+</script>
+</body>
+</html>
